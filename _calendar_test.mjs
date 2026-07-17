@@ -14,15 +14,14 @@ try {
   const p = JSON.parse(Buffer.from(TOKEN.split('.')[1], 'base64').toString())
   const expired = p.exp * 1000 < Date.now()
   console.log(`token exp: ${new Date(p.exp * 1000).toISOString()}  expired=${expired}`)
-  if (expired) console.log('>>> TOKEN EXPIRED — grab a fresh one and pass it: node _calendar_test.mjs <TOKEN>\n')
+  if (expired) console.log('>>> TOKEN EXPIRED — pass a fresh one: node _calendar_test.mjs <TOKEN>\n')
 } catch {}
 
-// Window: today 00:00 → +180d (same shape the app uses).
 const startTime = new Date(new Date().setHours(0, 0, 0, 0)).getTime()
 const endTime = startTime + 180 * 86400_000
 
-async function call(path, params) {
-  const qs = new URLSearchParams({ locationId: LOCATION, startTime: String(startTime), endTime: String(endTime), ...params })
+async function api(path, params) {
+  const qs = new URLSearchParams({ locationId: LOCATION, ...params })
   const res = await fetch(`${BASE}${path}?${qs}`, {
     headers: { accept: 'application/json, text/plain, */*', 'content-type': 'application/json',
       channel: 'APP', source: 'WEB_USER', version: '2021-07-28', 'token-id': TOKEN },
@@ -30,23 +29,38 @@ async function call(path, params) {
   const text = await res.text()
   if (!res.ok) return { ok: false, status: res.status, body: text.slice(0, 300) }
   let json; try { json = JSON.parse(text) } catch { json = {} }
-  return { ok: true, events: json.events ?? [] }
+  return { ok: true, json }
 }
 
+// 1) Enumerate ALL calendars — reveals whether reps could be spread across several.
+async function listCalendars() {
+  console.log('\n===== CALENDARS in this location =====')
+  const r = await api('calendars/', {})
+  if (!r.ok) return console.log(`calendars list FAILED: ${r.status} ${r.body}`)
+  const cals = r.json.calendars ?? r.json.data ?? []
+  console.log(`count=${cals.length}`)
+  for (const c of cals) console.log(`  - ${c.id ?? c._id}  "${c.name ?? ''}"  active=${c.isActive ?? c.active ?? '?'}`)
+  console.log('response keys:', Object.keys(r.json))
+}
+
+// 2) For an endpoint: fetch by calendarId, then re-fetch per assignedUserId and compare.
 async function probe(path, label) {
   console.log(`\n===== ${label} (${path}) =====`)
-  const byCal = await call(path, { calendarId: CALENDAR_ID })
-  if (!byCal.ok) { console.log(`calendarId call FAILED: ${byCal.status} ${byCal.body}`); return }
-  const users = [...new Set(byCal.events.map(e => e.assignedUserId).filter(Boolean))]
-  console.log(`by calendarId: count=${byCal.events.length}, uniqueAssignedUserIds=${users.length}`, users)
+  const cal = await api(path, { calendarId: CALENDAR_ID, startTime: String(startTime), endTime: String(endTime) })
+  if (!cal.ok) return console.log(`calendarId call FAILED: ${cal.status} ${cal.body}`)
+  const events = cal.json.events ?? []
+  const users = [...new Set(events.map(e => e.assignedUserId).filter(Boolean))]
+  console.log(`by calendarId: count=${events.length}, uniqueAssignedUserIds=${users.length}`, users)
+  console.log('response keys (look for total/meta/next):', Object.keys(cal.json))
   let sum = 0
   for (const u of users) {
-    const r = await call(path, { userId: u })
-    if (!r.ok) { console.log(`  userId=${u} FAILED ${r.status}`); continue }
-    console.log(`  by userId=${u}: count=${r.events.length}`); sum += r.events.length
+    const r = await api(path, { userId: u, startTime: String(startTime), endTime: String(endTime) })
+    const n = r.ok ? (r.json.events ?? []).length : `FAIL ${r.status}`
+    console.log(`  by userId=${u}: count=${n}`); if (typeof n === 'number') sum += n
   }
-  console.log(`SUM per-user=${sum}  vs  byCalendar=${byCal.events.length}  → ${sum === byCal.events.length ? 'MATCH ✅' : 'DIFF ⚠️'}`)
+  console.log(`SUM per-user=${sum}  vs  byCalendar=${events.length}  → ${sum === events.length ? 'MATCH ✅' : 'DIFF ⚠️'}`)
 }
 
+await listCalendars()
 await probe('calendars/events', 'EVENTS')
 await probe('calendars/blocked-slots', 'BLOCKED-SLOTS')

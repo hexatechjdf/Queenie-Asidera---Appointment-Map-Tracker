@@ -30,6 +30,7 @@ export function AppointmentMapPage() {
   const [viewAllRepId, setViewAllRepId] = useState<string | null>(null)
   const [flyTo, setFlyTo] = useState<AppointmentCoords | null>(null)
   const [cluster, setCluster] = useState(false)
+  const [showBusy, setShowBusy] = useState(true)
 
   const handleRefresh = useCallback(() => setRefreshKey((key) => key + 1), [])
 
@@ -141,7 +142,7 @@ export function AppointmentMapPage() {
       <div className="absolute inset-0">
         <MapContainer
           appointments={filtered}
-          busyEvents={filteredBusy}
+          busyEvents={showBusy ? filteredBusy : []}
           busyAnchor={busyAnchor}
           colorOf={colorOf}
           nameOf={nameOf}
@@ -163,6 +164,8 @@ export function AppointmentMapPage() {
         onSearchSelect={setSearchLocation}
         cluster={cluster}
         onClusterToggle={setCluster}
+        showBusy={showBusy}
+        onShowBusyToggle={setShowBusy}
         onRefresh={handleRefresh}
         isRefreshing={appointments.status === 'loading'}
       />

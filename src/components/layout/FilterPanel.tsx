@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Filter, Layers, RefreshCw } from 'lucide-react'
+import { CalendarClock, ChevronDown, Filter, Layers, RefreshCw } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { PlacesAutocomplete } from '@/features/search/PlacesAutocomplete'
 import { RepFilter } from '@/features/filters/RepFilter'
@@ -16,6 +16,9 @@ interface FilterPanelProps {
   /** Whether appointment markers are grouped into clusters. */
   cluster: boolean
   onClusterToggle: (enabled: boolean) => void
+  /** Whether Busy markers are shown on the map. */
+  showBusy: boolean
+  onShowBusyToggle: (enabled: boolean) => void
   /** Re-fetch appointments and busy events. */
   onRefresh: () => void
   isRefreshing: boolean
@@ -33,6 +36,8 @@ export function FilterPanel({
   onSearchSelect,
   cluster,
   onClusterToggle,
+  showBusy,
+  onShowBusyToggle,
   onRefresh,
   isRefreshing,
 }: FilterPanelProps) {
@@ -96,6 +101,18 @@ export function FilterPanel({
                 type="checkbox"
                 checked={cluster}
                 onChange={(event) => onClusterToggle(event.target.checked)}
+                className="peer sr-only"
+              />
+              <span className="relative ml-1 h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500" />
+            </label>
+
+            <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-slate-600">
+              <CalendarClock className="h-4 w-4 text-indigo-600" />
+              Show busy
+              <input
+                type="checkbox"
+                checked={showBusy}
+                onChange={(event) => onShowBusyToggle(event.target.checked)}
                 className="peer sr-only"
               />
               <span className="relative ml-1 h-5 w-9 shrink-0 rounded-full bg-slate-300 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow after:transition-transform after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-500" />

@@ -19,6 +19,9 @@ interface EventsResponse {
   events?: AppointmentEvent[]
 }
 
+/** TEMP: dump the first raw event to inspect for calendarId/groupId. */
+const DEBUG_RAW_EVENTS = true
+
 /**
  * Fetch a single rep's calendar events within a time window (epoch ms). The GHL
  * calendar events endpoint requires one of userId/calendarId/groupId, so
@@ -41,5 +44,20 @@ export async function fetchUserAppointments(
   const data = await client.get<EventsResponse>(
     `calendars/events?${params.toString()}`,
   )
+
+  // TEMP: raw-response probe to check for a shared calendarId/groupId across reps.
+  // Remove once the groupId/calendarId question is answered.
+  if (DEBUG_RAW_EVENTS) {
+    const events = data.events ?? []
+    const first = events[0] as unknown as Record<string, unknown> | undefined
+    console.log(`[calendar-raw] events userId=${userId}:`, {
+      count: events.length,
+      keys: first ? Object.keys(first) : [],
+      calendarId: first?.calendarId,
+      groupId: first?.groupId,
+      firstEvent: first,
+    })
+  }
+
   return (data.events ?? []).filter((event) => !event.deleted)
 }

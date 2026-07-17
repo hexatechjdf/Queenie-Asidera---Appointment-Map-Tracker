@@ -6,6 +6,10 @@ import { createGhlClient, type GhlClient } from '@/services/api/ghlClient'
 import { fetchUserAppointments } from '../services/calendar.service'
 import { fetchUserBlockedSlots } from '../services/busy.service'
 import { fetchContact } from '../services/contact.service'
+import {
+  getCustomFieldMap,
+  type CustomFieldMap,
+} from '../services/customFields.service'
 import { normalizeAppointment } from '../utils/normalizeAppointment'
 import { normalizeBusyEvent } from '../utils/normalizeBusyEvent'
 import { geocodeAddress } from '@/lib/geocode'
@@ -45,9 +49,10 @@ const INITIAL_BUSY: BusyEventsState = {
 }
 
 /**
- * Load one rep's appointments: fetch calendar events, enrich each with its
- * (cached) contact, normalize, then geocode. Unchanged from the prior pipeline —
- * only its host loop changed.
+ * Load one rep's appointments: fetch this rep's calendar events, then enrich each
+ * with only the contact it references. `fetchContact` caches/dedupes per id, so a
+ * contact shared across appointments/reps is fetched once and never preloaded in
+ * bulk — appointments drive exactly which contacts are fetched.
  */
 async function loadUserAppointments(
   client: GhlClient,
@@ -55,6 +60,7 @@ async function loadUserAppointments(
   userId: string,
   startMs: number,
   endMs: number,
+  fieldMap: CustomFieldMap,
 ): Promise<UnifiedAppointment[]> {
   const events = await fetchUserAppointments(client, locationId, userId, startMs, endMs)
   const contacts = await Promise.all(
@@ -65,13 +71,17 @@ async function loadUserAppointments(
     ),
   )
   const normalized = events.map((event, index) =>
-    normalizeAppointment(event, contacts[index]),
+    normalizeAppointment(event, contacts[index], fieldMap),
   )
   const coordsList = await Promise.all(
     normalized.map((appointment) =>
-      appointment.fullAddress
-        ? geocodeAddress(appointment.fullAddress)
-        : Promise.resolve(null),
+      // Contacts carrying Latitude/Longitude custom fields already have coords;
+      // only the rest fall back to the existing (batched, cached) geocoding.
+      appointment.coords
+        ? Promise.resolve(appointment.coords)
+        : appointment.fullAddress
+          ? geocodeAddress(appointment.fullAddress)
+          : Promise.resolve(null),
     ),
   )
   return normalized.map((appointment, index) => ({
@@ -135,6 +145,13 @@ export function useScheduleData(refreshKey = 0): ScheduleData {
 
     const load = async () => {
       try {
+        // Only the (cheap, cached) custom-field id lookup gates the rep loop, so
+        // events + blocked slots start loading immediately. Contacts are fetched
+        // per appointment during enrichment — no bulk contact preload.
+        const fieldMap = await getCustomFieldMap(client, auth.locationId).catch(
+          (): CustomFieldMap => ({}),
+        )
+
         await mapWithConcurrency(reps, USER_FETCH_CONCURRENCY, async (rep) => {
           if (!active) return
 
@@ -148,6 +165,7 @@ export function useScheduleData(refreshKey = 0): ScheduleData {
               rep.id,
               startMs,
               endMs,
+              fieldMap,
             ).catch(() => [] as UnifiedAppointment[]),
             loadUserBusy(client, auth.locationId, rep.id, startMs, endMs).catch(
               () => [] as BusyEvent[],

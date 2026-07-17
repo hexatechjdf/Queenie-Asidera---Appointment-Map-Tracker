@@ -39,7 +39,10 @@ export function FilterPanel({
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div className="fixed inset-x-4 top-4 z-[1100] mx-auto max-w-[1280px] rounded-2xl border border-white/60 bg-white/95 shadow-2xl backdrop-blur-md backdrop-saturate-150">
+    <div
+      id="appt-filter-panel"
+      className="fixed inset-x-4 top-4 z-[1100] mx-auto max-w-[1280px] rounded-2xl border border-white/60 bg-white/95 shadow-2xl backdrop-blur-md backdrop-saturate-150"
+    >
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}

@@ -9,14 +9,26 @@ const OFFSET_ABOVE: [number, number] = [0, -58]
 /** Gap between marker and bubble when the bubble is flipped below. */
 const FLIP_GAP_PX = 16
 
+/** Clearance kept between the bubble and the filter panel's bottom edge. */
+const PANEL_CLEARANCE_PX = 8
+
+/** Fallback top exclusion zone if the filter panel can't be measured. */
+const FALLBACK_TOP_SAFE_ZONE_PX = 100
+
 /**
- * If a bubble's top would land within this many px of the viewport top, it is
- * flipped below its marker so it clears the fixed top filter panel. A Leaflet
- * popup lives inside the map's transformed pane (a stacking context), so no
- * z-index can lift it above elements outside the map — repositioning is the only
- * reliable fix.
+ * The viewport-y below which a bubble opening upward would overlap (and hide
+ * behind) the fixed filter panel. Measured live from the panel element so it
+ * tracks the panel's real height — collapsed/expanded and responsive — instead of
+ * a hardcoded guess. A Leaflet popup lives inside the map's transformed pane (a
+ * stacking context), so no z-index can lift it above elements outside the map;
+ * repositioning below the marker is the only reliable fix.
  */
-const TOP_SAFE_ZONE_PX = 100
+function topSafeZone(): number {
+  const panel = document.getElementById('appt-filter-panel')
+  return panel
+    ? panel.getBoundingClientRect().bottom + PANEL_CLEARANCE_PX
+    : FALLBACK_TOP_SAFE_ZONE_PX
+}
 
 interface HoverPopupOptions {
   /** Popup HTML (includes the action button). */
@@ -84,9 +96,10 @@ export function bindHoverPopup(
     if (!el) return
 
     // Flip below the marker when opening above would tuck the bubble under the
-    // top filter panel. Reposition happens synchronously (before paint).
+    // top filter panel. Measured against the panel's live bottom edge so it never
+    // hides behind it. Reposition happens synchronously (before paint).
     el.classList.remove('appt-hover-popup--below')
-    if (el.getBoundingClientRect().top < TOP_SAFE_ZONE_PX) {
+    if (el.getBoundingClientRect().top < topSafeZone()) {
       popup.options.offset = [0, el.offsetHeight + FLIP_GAP_PX]
       el.classList.add('appt-hover-popup--below')
       popup.update()

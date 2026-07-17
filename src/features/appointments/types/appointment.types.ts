@@ -10,6 +10,7 @@ export interface UnifiedAppointment {
   repId: string
   contactName: string
   companyName: string
+  contactType: string
   status: string
   startTime: string
   endTime: string
@@ -19,6 +20,9 @@ export interface UnifiedAppointment {
   state: string
   postalCode: string
   country: string
+  inspectionPlan: string
+  typeOfService: string
+  vendorName: string
   fullAddress: string
   coords: AppointmentCoords | null
 }

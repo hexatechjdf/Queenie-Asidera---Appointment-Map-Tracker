@@ -1,6 +1,7 @@
 import { escapeHtml } from '@/utils/escapeHtml'
 import { formatDate, formatTime } from '@/utils/date'
 import { getBusinessTimeZone } from '@/utils/timezone'
+import { toTitleCase } from '@/utils/toTitleCase'
 import type {
   BusyEvent,
   UnifiedAppointment,
@@ -22,9 +23,13 @@ export function buildAppointmentTooltip(
   appointment: UnifiedAppointment,
   repName: string,
 ): string {
+  // Field set + formatting mirror the reference `markerHTML` (Company/Type/City/
+  // State title-cased; Address/Postal/custom fields/coords raw), with the
+  // appointment-specific rows (Representative/Status/Start/End/Time Zone) kept.
   const rows: Array<[string, string]> = [
     ['Representative', repName],
-    ['Company', appointment.companyName],
+    ['Company Name', toTitleCase(appointment.companyName)],
+    ['Contact Type', toTitleCase(appointment.contactType)],
     ['Status', appointment.status],
     [
       'Start',
@@ -35,13 +40,15 @@ export function buildAppointmentTooltip(
       `${formatDate(appointment.endTime)} ${formatTime(appointment.endTime)}`.trim(),
     ],
     ['Time Zone', getBusinessTimeZone()],
-    ['Address', appointment.fullAddress || appointment.address],
-    [
-      'Coordinates',
-      appointment.coords
-        ? `${appointment.coords.lat.toFixed(5)}, ${appointment.coords.lng.toFixed(5)}`
-        : '',
-    ],
+    ['Address', appointment.address],
+    ['City', toTitleCase(appointment.city)],
+    ['State', toTitleCase(appointment.state)],
+    ['Postal Code', appointment.postalCode],
+    ['Inspection Plan', appointment.inspectionPlan],
+    ['Type of Service', appointment.typeOfService],
+    ['Vendor Name', appointment.vendorName],
+    ['Latitude', appointment.coords ? String(appointment.coords.lat) : ''],
+    ['Longitude', appointment.coords ? String(appointment.coords.lng) : ''],
   ]
 
   const body = rows
@@ -49,7 +56,7 @@ export function buildAppointmentTooltip(
     .map(([label, value]) => `<div><b>${label}:</b> ${escapeHtml(value)}</div>`)
     .join('')
 
-  return `<div class="appt-tooltip"><strong>${escapeHtml(appointment.contactName)}</strong>${body}${viewAllButton}</div>`
+  return `<div class="appt-tooltip"><strong>${escapeHtml(toTitleCase(appointment.contactName))}</strong>${body}${viewAllButton}</div>`
 }
 
 /**

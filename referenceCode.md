@@ -1,0 +1,1857 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<!-- Tom Select CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" />
+
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --primary-soft: rgba(79, 70, 229, 0.12);
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --text-subtle: #94a3b8;
+    --warning-bg: #fef9c3;
+    --warning-border: #fde68a;
+    --warning-text: #854d0e;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.12), 0 2px 6px -2px rgba(15, 23, 42, 0.06);
+    --shadow-lg: 0 24px 48px -12px rgba(15, 23, 42, 0.18), 0 8px 16px -8px rgba(15, 23, 42, 0.08);
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: #eef2f7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fullscreen map */
+  #map {
+    height: 100vh;
+    width: 100vw;
+    background: #e2e8f0;
+  }
+
+  /* ===============================
+     FILTER PANEL
+  ================================ */
+  .filter-panel {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(14px) saturate(180%);
+    -webkit-backdrop-filter: blur(14px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    max-width: 1280px;
+    margin: 0 auto;
+    animation: panelIn 0.4s var(--ease);
+  }
+
+  /* Native <details> collapse */
+  details.filter-panel>summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  details.filter-panel>summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details.filter-panel:not([open])>.panel-header {
+    border-bottom: none;
+  }
+
+  .panel-toggle {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: var(--text-muted);
+    background: rgba(15, 23, 42, 0.04);
+    transition: all 0.2s var(--ease);
+    flex-shrink: 0;
+  }
+
+  .panel-toggle:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .panel-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.25s var(--ease);
+  }
+
+  details.filter-panel:not([open]) .panel-toggle svg {
+    transform: rotate(-90deg);
+  }
+
+  @keyframes panelIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.6), rgba(255, 255, 255, 0));
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    user-select: none;
+  }
+
+  .panel-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .panel-title svg {
+    width: 18px;
+    height: 18px;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .panel-subtitle {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-subtle);
+    font-weight: 500;
+  }
+
+  .panel-body {
+    padding: 16px 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Tag notice row */
+  .tag-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-sm);
+    flex-wrap: wrap;
+  }
+
+  .custom-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .custom-check input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-strong);
+    border-radius: 5px;
+    background: #ffffff;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.18s var(--ease);
+  }
+
+  .custom-check input[type="checkbox"]:hover {
+    border-color: var(--primary);
+  }
+
+  .custom-check input[type="checkbox"]:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .custom-check input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0px;
+    width: 5px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .tag-hint {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--warning-text);
+    flex: 1 1 280px;
+    min-width: 0;
+  }
+
+  .tag-hint b {
+    font-weight: 700;
+  }
+
+  /* Filter grid for dropdowns */
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  /* Search row for inputs + button */
+  .search-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  /* Field wrapper for icon-prefixed inputs */
+  .field {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .field-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-subtle);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Inputs */
+  .input-field {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    outline: none;
+    transition: all 0.18s var(--ease);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-subtle);
+  }
+
+  .input-field:hover {
+    border-color: var(--border-strong);
+  }
+
+  .input-field:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+
+  .field:focus-within .field-icon {
+    color: var(--primary);
+  }
+
+  /* Tom Select overrides */
+  .filter-panel .ts-wrapper {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filter-panel .ts-control {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 9px 12px !important;
+    min-height: 40px;
+    font-size: 14px !important;
+    background: #ffffff !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: all 0.18s var(--ease) !important;
+  }
+
+  .filter-panel .ts-control:hover {
+    border-color: var(--border-strong) !important;
+  }
+
+  .filter-panel .ts-wrapper.focus .ts-control,
+  .filter-panel .ts-wrapper.single.focus .ts-control {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px var(--primary-soft) !important;
+  }
+
+  .filter-panel .ts-control input::placeholder,
+  .filter-panel .ts-control .placeholder {
+    color: var(--text-subtle) !important;
+  }
+
+  .filter-panel .ts-dropdown {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: var(--shadow-lg) !important;
+    margin-top: 4px !important;
+    overflow: hidden;
+  }
+
+  .filter-panel .ts-dropdown .option {
+    padding: 9px 12px !important;
+    font-size: 14px !important;
+  }
+
+  .filter-panel .ts-dropdown .active {
+    background: var(--primary-soft) !important;
+    color: var(--primary-dark) !important;
+  }
+
+  .plugin-clear_button.form-select .clear-button,
+  .plugin-clear_button.single .clear-button {
+    right: 10px;
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+  }
+
+  .plugin-clear_button.form-select .clear-button:hover,
+  .plugin-clear_button.single .clear-button:hover {
+    opacity: 1;
+  }
+
+  /* Search button */
+  .search-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    background: linear-gradient(135deg, var(--primary), #6366f1);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 22px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s var(--ease);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+    white-space: nowrap;
+    user-select: none;
+    letter-spacing: -0.01em;
+  }
+
+  .search-box:hover {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.38);
+  }
+
+  .search-box:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+  }
+
+  .search-box svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ===============================
+     LEAFLET POPUP POLISH
+  ================================ */
+  .leaflet-popup-content-wrapper {
+    border-radius: var(--radius-sm) !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 2px !important;
+  }
+
+  .leaflet-popup-content {
+    font-size: 13px !important;
+    line-height: 1.65 !important;
+    margin: 12px 14px !important;
+    color: var(--text);
+  }
+
+  .leaflet-popup-content strong:first-child {
+    display: block;
+    font-size: 15px;
+    color: var(--primary-dark);
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .leaflet-popup-content b {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .leaflet-popup-content button {
+    margin-top: 10px;
+    padding: 7px 14px;
+    background: var(--primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.15s ease;
+  }
+
+  .leaflet-popup-content button:hover {
+    background: var(--primary-dark);
+  }
+
+  .leaflet-tooltip {
+    border-radius: var(--radius-sm) !important;
+    box-shadow: var(--shadow) !important;
+    border: 1px solid var(--border) !important;
+    font-size: 12.5px;
+    line-height: 1.55;
+    padding: 8px 10px;
+  }
+
+  /* Leaflet controls polish */
+  .leaflet-control-attribution {
+    font-size: 10px !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-radius: 4px !important;
+  }
+
+  .leaflet-control-zoom a,
+  .leaflet-control-layers-toggle {
+    border-radius: 8px !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  /* ===============================
+     RESPONSIVE
+  ================================ */
+  @media (max-width: 900px) {
+    .search-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .search-row .search-box {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .filter-panel {
+      top: 8px;
+      left: 8px;
+      right: 8px;
+    }
+
+    .panel-header {
+      padding: 12px 14px;
+    }
+
+    .panel-subtitle {
+      display: none;
+    }
+
+    .panel-toggle {
+      margin-left: auto;
+    }
+
+    .panel-body {
+      padding: 12px 14px 14px;
+      gap: 10px;
+    }
+
+    .filter-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .search-row {
+      grid-template-columns: 1fr;
+    }
+
+    .search-row .search-box {
+      width: 100%;
+    }
+
+    .tag-row {
+      padding: 9px 12px;
+    }
+  }
+</style>
+
+<!-- Filter Overlay -->
+<details class="filter-panel" open>
+  <summary class="panel-header">
+    <div class="panel-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+      </svg>
+      Contact Map Filters
+    </div>
+    <span class="panel-subtitle">Refine results across types, services, and locations</span>
+    <span class="panel-toggle" aria-label="Toggle filter panel" title="Show / hide filters">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </span>
+  </summary>
+
+  <div class="panel-body">
+    <div class="filters tag-row">
+      <label class="custom-check">
+        <input type="checkbox" value="1" id="search_tag" checked>
+        Tag: Customer
+      </label>
+      <span class="tag-hint">
+        <b>Max contacts limit is 5,000.</b> The default search shows contacts tagged "customer". This checkbox only
+        applies when used with the filter fields below.
+      </span>
+    </div>
+
+    <div class="filters filter-grid">
+      <div class="field">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="input-field" id="locationSearch" placeholder="Search for a place...">
+      </div>
+
+      <select id="types" placeholder="Contact Type" matcher="type"></select>
+      <select id="services" placeholder="Services" matcher="services"></select>
+      <select id="inspection" placeholder="Inspection Plans" matcher="inspection"></select>
+      <select id="vendor_name" placeholder="Vendor Name" matcher="vendor_name"></select>
+    </div>
+
+    <div class="filters search-row">
+      <div class="field">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <input type="text" id="citySearchInput" class="input-field" placeholder="City">
+      </div>
+
+      <div class="field">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18M3 7h18M3 14h18"></path>
+        </svg>
+        <input type="text" id="stateSearchInput" class="input-field" placeholder="State">
+      </div>
+
+      <div class="field">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <path d="M3 9h18"></path>
+        </svg>
+        <input type="text" id="zipSearchInput" class="input-field" placeholder="Zip Code">
+      </div>
+
+      <a class="btn search-box" id="zipSearchBtn" role="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Search by Address
+      </a>
+    </div>
+  </div>
+</details>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Tom Select JS -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.6.1/dist/js/tom-select.complete.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script async>
+
+  const API_KEY = "{{custom_values.map_api_key}}";
+  document.body.innerHTML = document.querySelector('.custom-code-container').innerHTML;
+  /* ===============================
+     STATE BOUNDS CONFIGURATION
+  ================================ */
+  const stateBounds = {
+    "California": [[32.5, -124.4], [42.0, -114.1]],
+    "New York": [[40.4, -79.8], [45.1, -71.8]],
+    "Texas": [[25.8, -106.6], [36.5, -93.5]],
+    "England": [[49.9, -6.4], [55.8, 1.8]],
+    "Germany": [[47.3, 5.8], [55.1, 15.0]]
+  };
+
+  const icons = {
+    '$1-$899': "yellow",
+    '$1 - $899': "yellow",
+    '$3501 - and up': "green",
+    '$900-$1500': "green",
+    '$900 - $1500': "green",
+    '$1501 - $3999': "green",
+    'on demand': "red",
+
+  };
+
+
+
+  const myCustomColour = '#583470'
+
+  /* ===============================
+     CUSTOMER DATA
+  ================================ */
+  let customers = [];
+  const tomSelects = {};
+  function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+  function capitalizeEachWord(str) {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+}
+
+  function getCustomFieldFilter(value, field) {
+
+    return {
+      "field": "custom_fields." + field.id,
+      "operator": "eq",
+      "value": value,
+      "options": {
+        "minimumMatch": "all"
+      }
+    }
+    return {
+      "id": "4",
+      "filterName": field.name,
+      "filterName_lc": field.fieldKey,
+      "extras": {
+        "customFieldId": field.id,
+        "customFieldType": field.dataType
+      },
+      "selectedOption": {
+        "filterName": field.name,
+        "filterName_lc": field.fieldKey,
+        "condition": "is",
+        "firstValue": [
+          {
+            "key": value,
+            "value": value
+          }
+        ]
+      }
+    }
+  }
+
+  function getBaseFilter(key, value) {
+    return {
+      "id": "7",
+      "filterName": key,
+      "filterName_lc": key.toLowerCase(),
+      "extras": {},
+      "selectedOption": {
+        "filterName": key,
+        "filterName_lc": key.toLowerCase(),
+        "condition": "is",
+        "firstValue": value
+      }
+    }
+
+  }
+
+  const KEYS = {
+    LAT: "Latitude",
+    LNG: "Longitude",
+    INSPECTION_PLAN: "Inspection Plan",
+    TYPE_SERVICE: "Type of Service",
+    VENDOR_NAME: "Vendor Name",
+    CONTACT_TYPE: "Contact Type"
+  }
+  let locationId = 'lPjNHlsYicOMRl1SQ4ya';
+  let fields = {
+    [locationId]: {
+      [KEYS.LAT]: '5KAxay2CpI0t8kHQoWVk',
+      [KEYS.LNG]: '79IXHXoEqYzSg2IQk8Ms',
+      [KEYS.INSPECTION_PLAN]: '6muYUnCrgjLydwmPfMqE',
+      [KEYS.TYPE_SERVICE]: 'U5DjmT3gcmBX53h161vh',
+      [KEYS.VENDOR_NAME]: 'U5DjmT3gcmBX53h161vh',
+    }
+  }
+
+  const configs = [
+    { id: "inspection", q: KEYS.INSPECTION_PLAN },
+    { id: "types", q: KEYS.CONTACT_TYPE },
+    { id: "services", q: KEYS.TYPE_SERVICE },
+    { id: "vendor_name", q: KEYS.VENDOR_NAME },
+    { id: "latitude", q: KEYS.LAT },
+    { id: "longitude", q: KEYS.LNG }
+  ];
+
+  let isSearching = false;
+  let autocomplete;
+  const zipSearchBtn = document.getElementById('zipSearchBtn');
+  const zipSearchInput = document.getElementById('zipSearchInput');
+  const citySearchInput = document.getElementById('citySearchInput');
+  const stateSearchInput = document.getElementById('stateSearchInput');
+  const contacttypes = document.getElementById('types');
+  const inspectionSelect = document.getElementById('inspection');
+  const vendorSelect = document.getElementById('vendor_name');
+  const servicesSelect = document.getElementById('services');
+  const searchTag = document.getElementById('search_tag');
+
+  zipSearchInput.addEventListener('input', debounce(async () => {
+    let value = zipSearchInput.value.trim();
+    if (value == '') {
+      filterData();
+    }
+  }, 300));
+
+  // contacttypes.addEventListener('change', debounce(filterContacts, 600));
+
+  async function filterContacts() {
+    let filters = [];
+    let value = zipSearchInput.value.trim();
+    if (value != '') {
+      filters.push(getZipFilter(value))
+    }
+
+    value = stateSearchInput.value.trim();
+    if (value != '') {
+      filters.push(getBaseFilter("City", value))
+    }
+    value = citySearchInput.value.trim();
+    if (value != '') {
+      filters.push(getBaseFilter("State", value))
+    }
+
+
+    let contactType = contacttypes.value.trim();
+    if (contactType != '') {
+      filters.push(getTypeFilter(contactType))
+    }
+
+    if (searchTag.checked) {
+      filters.push(customerFilter);
+    }
+    [inspectionSelect, servicesSelect, vendorSelect].forEach(x => {
+      let field = allCustomFields[x.id];
+      let value = x.value.trim();
+      if (value != "") {
+        filters.push(getCustomFieldFilter(value, field))
+      }
+    })
+    if (filters.length == 0) {
+      filters.push(customerFilter);
+    }
+
+    await pullCustomers(filters);
+  }
+
+  const liveFilterData = debounce(filterContacts, 300);
+  zipSearchBtn.addEventListener('click', liveFilterData);
+  searchTag.addEventListener('change', liveFilterData);
+
+  function initAutocomplete() {
+    const input = document.getElementById('locationSearch');
+    autocomplete = new google.maps.places.Autocomplete(input);
+    // Restrict to geocoding (addresses)
+    autocomplete.setTypes(['geocode']);
+    // Debounce the place_changed event
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+
+      if (!place.geometry) {
+        alert("No details available for input: '" + place.name + "'");
+        return;
+      }
+      // if (!place.geometry) return alert("No details found for: " + place.name);
+
+      let lat = place.geometry.location.lat();
+      let lng = place.geometry.location.lng();
+
+      // Create unique colored marker
+      const marker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png', // Unique green color
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        })
+      }).addTo(map);
+
+      marker.bindPopup(`<b>${place.name}</b><br>${place.formatted_address ?? ''}`);
+
+      // Get viewport or fallback to location
+      let bounds;
+      if (place.geometry.viewport) {
+        bounds = [
+          [place.geometry.viewport.getSouthWest().lat(), place.geometry.viewport.getSouthWest().lng()],
+          [place.geometry.viewport.getNorthEast().lat(), place.geometry.viewport.getNorthEast().lng()]
+        ];
+        map.fitBounds(bounds); // Zoom to viewport
+      } else if (place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        map.setView([lat, lng], 15); // Zoom to location
+      }
+    });
+  }
+
+  document.querySelectorAll('.filter-panel select').forEach(select => {
+    const isLocal = select.classList.contains('local');
+    tomSelects[select.id] = new TomSelect(select, {
+      plugins: select.multiple ? ['remove_button', 'clear_button'] : ['clear_button'],
+      
+      maxOptions: 500,
+      placeholder: select.getAttribute('placeholder'),
+      onChange: isLocal ? filterData : liveFilterData
+    });
+  });
+  const API_BASE = 'https://services.leadconnectorhq.com/';
+
+  /* ===============================
+     MAP INITIALIZATION
+  ================================ */
+  let map = null;
+
+  async function fetchCustomField(query = '', picklistOptions = true) {
+
+    let data = await makeAPICall(`locations/${locationId}/customFields/search?parentId=&skip=0&limit=10&documentType=field&model=all&query=${query}&includeStandards=true`);
+    const field = data?.customFields?.find(
+      f => f.name.trim().toLowerCase() === query.toLowerCase()
+    );
+    if (field) {
+
+      field.fieldId = field._id ?? field.id;
+      field.fieldKey = field.fieldKey.replaceAll("contact.", "");
+      return field;
+    }
+    return { picklistOptions: [] };
+  }
+
+  let allCustomFields = {};
+
+  async function getFields() {
+
+
+    const results = await Promise.all(
+      configs.map(async ({ id, q }) => {
+        const fields = await fetchCustomField(q);
+        return { id, fields, finder: q };
+      })
+    );
+    let locationFields = fields[locationId] ?? {};
+
+    for (const { id, fields, finder } of results) {
+      allCustomFields[id] = fields;
+      locationFields[finder] = fields.id || fields._id;
+
+      // document.querySelector('#' + id).setAttribute("data-fieldid", fields.fieldId);
+
+      for (const p of fields.picklistOptions ?? []) {
+        addToFilters(p?.name ?? p, id);
+      }
+    }
+    fields[locationId] = locationFields;
+    console.log(fields);
+  }
+
+
+  function initMap() {
+    if (map) {
+      map.remove();
+    }
+    markers = [];
+    map = L.map('map').setView([20, 0], 2);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    });
+
+    // Satellite Map (Esri)
+    var satelliteMap = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles © Esri'
+      }
+    );
+
+    // Default layer
+    streetMap.addTo(map);
+
+    // Layer control
+    var baseMaps = {
+      "Street View": streetMap,
+      "Satellite View": satelliteMap
+    };
+
+    L.control.layers(baseMaps).addTo(map);
+  }
+
+  let markers = [];
+
+  async function makeAPICall(url, method = 'GET', body = null) {
+    const token = await new Promise((resolve) => {
+      window.parent.postMessage({ type: "token" }, "*");
+      const messageHandler = ({ data }) => {
+        if (data.type === "token") {
+          window.removeEventListener("message", messageHandler);
+          locationId = data.locationId;
+          resolve(data.token);
+        }
+      };
+      window.addEventListener("message", messageHandler);
+    });
+    if (!token || token == '') {
+      return;
+    }
+    try {
+
+      const response = await fetch(`${API_BASE}${url}`, {
+        method,
+        headers: {
+          'accept': 'application/json, text/plain, */*',
+          'content-type': 'application/json',
+          'channel': 'APP',
+          'version': '2021-07-28',
+          'source': 'WEB_USER',
+          'token-id': token
+        },
+        body: body ? JSON.stringify(body) : null
+      });
+      if (!response.ok) throw new Error(`API ${method} ${url} failed`);
+      return await response.json();
+    } catch (err) {
+      console.error('[makeAPICall Error]', err);
+      throw err;
+    }
+  }
+
+  let customerFilter = {
+    "id": "4",
+    "filterName": "Tag",
+    "filterName_lc": "tag",
+    "extras": {},
+    "selectedOption": {
+      "filterName": "Tag",
+      "filterName_lc": "tag",
+      "condition": "is",
+      "firstValue": [
+        {
+          "key": "customer",
+          "value": "customer"
+        }
+      ]
+    }
+  };
+
+
+
+  function getZipFilter(value) {
+    return {
+      "id": "5",
+      "filterName": "Postal Zip Code",
+      "filterName_lc": "postal_zip_code",
+      "extras": {},
+      "selectedOption": {
+        "filterName": "Postal Zip Code",
+        "filterName_lc": "postal_zip_code",
+        "condition": "is",
+        "firstValue": value
+      }
+    }
+  }
+
+  function getTypeFilter(value) {
+    if (value == '') {
+      return {}
+    }
+    return {
+      "id": "2",
+      "filterName": "Type",
+      "filterName_lc": "type",
+      "extras": {},
+      "selectedOption": {
+        "filterName": "Type",
+        "filterName_lc": "type",
+        "condition": "is",
+        "firstValue": [
+          {
+            "key": value.toLowerCase(),
+            "value": value
+          }
+        ]
+      }
+    }
+  }
+
+  async function getContacts(baseFilter, page = 1, limit = 5000, retries = 1) {
+    console.log({ page });
+    if (!Array.isArray(baseFilter)) {
+      baseFilter = [baseFilter];
+    }
+    try {
+      let response = await makeAPICall("contacts/search/2", "POST", {
+        "locationId": locationId,
+        "page": page,
+        "pageLimit": limit,
+        "sort": [],
+        "filters": [
+          {
+            "group": "OR",
+            "filters": [
+              {
+                "group": "AND",
+                "filters": [
+                  {
+                    "id": "7",
+                    "filterName": "Full Name",
+                    "filterName_lc": "full_name",
+                    "extras": {},
+                    "selectedOption": {
+                      "filterName": "Full Name",
+                      "filterName_lc": "full_name",
+                      "condition": "is_not_empty",
+                      "firstValue": null
+                    }
+                  },
+                  {
+                    "id": "3",
+                    "filterName": "Address",
+                    "filterName_lc": "address",
+                    "extras": {},
+                    "selectedOption": {
+                      "filterName": "Address",
+                      "filterName_lc": "address",
+                      "condition": "is_not_empty"
+                    }
+                  },
+                  ...baseFilter
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      let isLimitError = checkLimitError(response);
+      if (isLimitError && retries == 1) {
+        maxContacts = isLimitError;
+        return await getContacts(baseFilter, page, maxContacts, 2);
+      }
+      return response.contacts ?? [];
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
+  }
+
+  async function getMoreContacts(filter, page = 2) {
+    if (customers.length == 5000 || page == 4) {
+      return;
+    }
+    let newContacts = [...await getContacts(filter, page, maxContacts)];
+    if (newContacts.length == 0) {
+      // for (let [k, v] of Object.entries(filters)) {
+      //   let data = Object.values(v);
+      //   const select = document.getElementById(k);
+      //   if (select) {
+      //     data.forEach(item => {
+      //       const option = document.createElement('option');
+      //       option.value = item;
+      //       option.textContent = item;
+      //       select.appendChild(option);
+      //     });
+
+      //   }
+
+      // }
+      filterData();
+    } else {
+      // page += 1;
+      await fetchContactInfo(newContacts);
+      customers = [...customers, ...newContacts];
+      console.log(customers.length);
+      // filterData();
+      setTimeout(getMoreContacts, 3000, filter, page + 1);
+    }
+  }
+
+
+  function getAddress(contact) {
+    return contact.address_1 || contact.address1 || contact.full_address || "";
+  }
+
+  function getCompany(contact) {
+    return contact.companyName || contact.businessName || contact.business_name || contact.company_name || "";
+  }
+  /* ===============================
+     GEOCODE & ADD MARKERS
+  ================================ */
+  let filters = {
+    states: {},
+    city: {},
+    customFields: {},
+    companyName: {},
+    types: {},
+    services: {},
+    inspection: {},
+    vendor_name: {}
+  };
+  function addToFilters(originalValue, key) {
+    value = normalize(originalValue);
+    if (value != '') {
+      let isSelect2 = tomSelects[key] ?? null;
+      if (isSelect2) {
+        isSelect2.addOptions([
+          { value: originalValue, text: originalValue },
+        ]);
+      }
+
+      filters[key][value] = value;
+    }
+
+  }
+
+  function zoomToMarkers(activeOnly = false) {
+    const visibleMarkers = activeOnly
+      ? markers.filter(m => map.hasLayer(m))
+      : markers;
+
+    if (!visibleMarkers.length) return;
+
+    const group = L.featureGroup(visibleMarkers);
+    map.fitBounds(group.getBounds(), {
+      padding: [40, 40],
+      maxZoom: 20
+    });
+  }
+  const geocodeCache = {};
+
+  function normalize(value) {
+    return value.trim().toUpperCase();
+  }
+  function findLatLng(customFields = []) {
+    const result = {};
+
+    if (!fields[locationId]) return result;
+
+    const fieldMap = fields[locationId] || {};
+    customFields.forEach(field => {
+      for (const [key, fieldId] of Object.entries(fieldMap)) {
+        if (field.id === fieldId && field?.fieldValueString != null) {
+          result[key] = field.fieldValueString;
+        }
+      }
+    });
+
+    return result;
+  }
+
+
+
+  async function geocodeAddress(address) {
+    if (!address) return null;
+
+    if (geocodeCache[address]) {
+      return geocodeCache[address];
+    }
+
+    const data = await fetchAddress(address);
+
+    if (!Array.isArray(data) || !data.length) return null;
+
+    const coords = {
+      lat: Number(data[0].lat),
+      lng: Number(data[0].lon)
+    };
+
+    geocodeCache[address] = coords;
+    return coords;
+  }
+
+  function toTitleCase(str = "") {
+    return str ? str
+      .toLowerCase()
+      .replace(/\b\w/g, char => char.toUpperCase()) : "";
+  }
+
+  function getBorderColor(type) {
+    const t = (type || '').toLowerCase().trim();
+    const borderColors = {
+      customer: 'white',
+      lead: 'orange',
+      prospect: 'blue'
+    };
+    return borderColors[(type || '').toLowerCase().trim()] ?? '#ffffff';
+  }
+
+  function addMarkers(customer) {
+    try {
+      let address = getAddress(customer);
+
+      let data = customer.coords ?? {};
+      const lat = data.lat;
+      const lng = data.lng;
+      customer.lat = lat;
+      customer.lng = lng;
+      let insPlan = customer[KEYS.INSPECTION_PLAN] || "";
+      let type = toTitleCase(customer.type ?? "") ?? "";
+
+      let serviceType = customer[KEYS.TYPE_SERVICE];
+      let vendorName = customer[KEYS.VENDOR_NAME];
+      let companyName = toTitleCase(getCompany(customer));
+      let contactName = toTitleCase(customer.contactName ?? customer.name);
+
+      let markerHTML = `<strong>${contactName}</strong><br><br>
+          <b>Company Name:</b> ${companyName}<br>
+          <b>Type:</b> ${type}<br>
+          <b>Address:</b> ${address}<br>
+          <b>City:</b> ${toTitleCase(customer.city ?? "")}<br>
+          <b>State:</b> ${toTitleCase(customer.state ?? "")}<br>
+          <b>Postal Code:</b> ${customer.postalCode ?? ""}<br>
+          
+          <b>${KEYS.INSPECTION_PLAN}:</b> ${insPlan}<br>
+          <b>${KEYS.TYPE_SERVICE}:</b> ${serviceType}<br>
+          <b>${KEYS.VENDOR_NAME}:</b> ${vendorName}<br>
+          <b>Latitude:</b> ${lat}<br>
+          <b>Longitude:</b> ${lng}<br>
+          `;//<b>Last Note: ${customer.lastNote ?? ""}
+      // Define icons per type
+
+      const borderColor = getBorderColor(type);
+      let icon = icons[insPlan.toLocaleLowerCase()] ?? null;
+      if (!icon) {
+        if (type.toLowerCase() == 'customer') {
+          icon = '#000000';
+        } else {
+          icon = '#2e85cb';
+        }
+      }
+      let marker = L.marker([lat, lng])
+      if (icon) {
+
+        const markerHtmlStyles = `
+          background-color: ${icon};
+          width: 1.2rem;
+          height: 1.2rem;
+          display: block;
+          left: -1.5rem;
+          top: -1.5rem;
+          position: relative;
+          border-radius: 3rem 3rem 0;
+          transform: rotate(45deg);
+          border: 2px solid ${borderColor}`
+        icon = icon = L.divIcon({
+          className: "my-custom-pin",
+          iconAnchor: [0, 24],
+          labelAnchor: [-6, 0],
+          popupAnchor: [0, -36],
+          html: `<span style="${markerHtmlStyles}" />`
+        })
+        marker = L.marker([lat, lng], { icon })
+      }
+
+
+      marker.bindTooltip(
+        markerHTML,
+        { direction: "top" }
+      )
+        .bindPopup(markerHTML + `<button id="fetchAddressBtn" address="">Fetch New Address</button>`);
+
+      marker.customerGroup = companyName;
+      marker.customer = customer;
+      marker.on('popupopen', function () {
+        const btn = document.getElementById('fetchAddressBtn');
+        if (btn) {
+          btn.onclick = async () => {
+            const customer = marker.customer; // access the customer
+
+            let result = await searchPlace(customer._address);
+            updateCoords(result, customer, marker);
+          }
+        }
+      });
+
+      marker.on('click', () => {
+        map.flyTo(marker.getLatLng(), 15); // Smooth zoom & pan
+      });
+      marker.addTo(map);
+      markers.push(marker);
+      // addToFilters(customer.state ?? "", 'states');
+      // addToFilters(customer.city ?? "", 'city');
+      addToFilters(companyName, 'companyName');
+      // addToFilters(insPlan ?? "No Plan", 'inspection');
+      // addToFilters(serviceType ?? "No Service", 'services');
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+  async function updateCustomerData(customer_id, coords) {
+
+    let payload = [
+      {
+        "id": fields[locationId][KEYS.LNG],
+        "field_value": coords.lng ?? ""
+      },
+      {
+        "id": fields[locationId][KEYS.LAT],
+        "field_value": coords.lat ?? ""
+      }
+    ]
+    // console.log(payload);
+    // return;
+    await makeAPICall("contacts/" + customer_id, "PUT", { customFields: payload });
+  }
+  function getField(customer, key) {
+    return customer?.[key]?.toString().trim() || "";
+  }
+
+  function makeGeocodeAddress(full_address) {
+    return full_address.replace(/\s+/g, " ").trim();
+  }
+  function makeFullAddress(customer) {
+    const parts = [
+      getAddress(customer),
+      getField(customer, "city"),
+      getField(customer, "state"),
+      getField(customer, "postalCode"),
+      getField(customer, "country")
+    ].filter(Boolean); // remove empty values
+
+    return parts.join(", ");
+  }
+
+  async function fetchContactInfo(data) {
+
+    const withCoords = [];
+    const withoutCoords = [];
+
+    for (const customer of customers) {
+      const filterFields = findLatLng(customer.customFields ?? []);
+      const lat = filterFields[KEYS.LAT];
+      const lng = filterFields[KEYS.LNG];
+      let address = getAddress(customer);
+      if (!address) {
+        continue;
+      }
+
+      for (const [key, value] of Object.entries(fields[locationId] || {})) {
+        customer[key] = filterFields[key] ?? "";
+      }
+
+      const full_address = makeFullAddress(customer);
+      if (full_address != '') {
+        customer.full_address = full_address;
+        customer._address = makeGeocodeAddress(full_address);
+        if (lat && lng) {
+          customer.coords = { lat, lng };
+          withCoords.push(customer);
+        } else {
+
+          withoutCoords.push(customer);
+        }
+        // withoutCoords.push(customer);
+      }
+
+    }
+    for (const customer of withCoords) {
+      addMarkers(customer);
+    }
+
+    zoomToMarkers();
+    await geocodeBatch(withoutCoords);
+  }
+
+  function updateCoords(result, customer, marker = null) {
+    // console.log(result);
+    if (result.lat) {
+      if (marker) {
+        alert('Marker Position Changed')
+        marker.remove();
+      }
+      const coords = result;
+      customer.coords = coords;
+      updateCustomerData(customer.id, coords);
+      addMarkers(customer);
+    } else {
+      console.warn(
+        "Geocode failed:",
+        customer._address
+      );
+    }
+  }
+
+  async function geocodeBatch(customers, batchSize = 50) {
+    for (let i = 0; i < customers.length; i += batchSize) {
+      const batch = customers.slice(i, i + batchSize);
+
+      const results = await Promise.all(
+        batch.map(c => searchPlace(c._address))
+      );
+      results.forEach((result, index) => {
+        const customer = batch[index];
+        updateCoords(result, customer);
+      });
+    }
+  }
+
+
+  function loadGoogleMapsPlaces(apiKey) {
+    return new Promise((resolve, reject) => {
+      // If already loaded
+      if (window.google && window.google.maps && window.google.maps.places) {
+        resolve(window.google.maps);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src =
+        `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => resolve(window.google.maps);
+      script.onerror = () => reject(new Error("Google Maps JS failed to load"));
+
+      document.head.appendChild(script);
+    });
+  }
+  //
+
+  const stateBoundsCache = new Map();
+
+  function zoomToStateCached(map, stateName, country = "US") {
+    const key = `${stateName.trim().toLowerCase()}_${country.trim().toLowerCase()}`;
+
+    if (stateBoundsCache.has(key)) {
+      const cached = stateBoundsCache.get(key);
+      if (cached.viewport) map.fitBounds(cached.viewport);
+      else if (cached.location) {
+        map.setCenter(cached.location);
+        map.setZoom(7);
+      }
+      return Promise.resolve(cached);
+    }
+
+    return new Promise((resolve, reject) => {
+      const service = new google.maps.places.PlacesService(
+        document.createElement("div")
+      );
+
+      service.textSearch({ query: `${stateName}, ${country}` }, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results.length) {
+          const place = results[0];
+          const cacheData = {};
+
+          if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+            cacheData.viewport = place.geometry.viewport;
+          } else if (place.geometry.location) {
+            map.setCenter(place.geometry.location);
+            map.setZoom(7);
+            cacheData.location = place.geometry.location;
+          }
+
+          stateBoundsCache.set(key, cacheData);
+          resolve(cacheData);
+        } else {
+          resolve(null);
+
+        }
+      });
+    });
+  }
+  let maxContacts = 5000;
+
+  function checkLimitError(t) {
+    if ((t.error ?? "") == 'Unprocessable Entity') {
+      if (t?.message) {
+        let limitmsg = 'limit must not be greater than ';
+
+        if (!Array.isArray(t.message)) {
+          t.message = [t.message];
+        }
+        try {
+          t.message.forEach(p => {
+            let msg = p.toLowerCase();
+            if (msg.includes(limitmsg)) {
+              msg = msg.replace(limitmsg, '');
+              return parseInt(msg);
+            }
+          });
+        } catch (error) {
+          return 100;
+        }
+      }
+    }
+    return false;
+  }
+  async function pullCustomers(filter) {
+    if (isSearching) {
+      return;
+    }
+    Swal.fire({
+      title: 'Loading...',
+      text: 'Please wait',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+    initMap();
+    isSearching = true;
+    customers = await getContacts(filter, 1, maxContacts);
+    isSearching = false;
+    filterData();
+    Swal.close();
+    if (customers.length > 0) {
+
+      await fetchContactInfo(customers);
+      if (customers.length == maxContacts) {
+        await getMoreContacts(filter);
+      }
+
+    } else {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Contact Found',
+        text: 'Please try another search.'
+      });
+    }
+  }
+
+  loadGoogleMapsPlaces(API_KEY).then(async (t) => {
+    initAutocomplete();
+    await getFields();
+    await pullCustomers(customerFilter);
+  }).catch(error => {
+    console.log(error);
+    alert('Failed to load Map');
+  })
+  const geoCache = new Map();
+
+  function searchPlace(query) {
+    const key = query.trim().toLowerCase();
+
+    if (geoCache.has(key)) return geoCache.get(key);
+
+    const promise = new Promise((resolve, reject) => {
+      const service = new google.maps.places.PlacesService(
+        document.createElement("div")
+      );
+
+      service.textSearch({ query }, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          const place = results[0];
+          resolve({
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng(),
+            place_id: place.place_id
+          });
+        } else {
+          geoCache.delete(key); // allow retry
+          console.log(status);
+          resolve({ result: status });
+
+        }
+      });
+    });
+
+    geoCache.set(key, promise);
+    return promise;
+  }
+
+  /* ===============================
+     FILTER MARKERS BY GROUP
+  ================================ */
+  function filterMarkers() {
+    const activeGroups = Array.from(
+      document.querySelectorAll('.filters input:checked')
+    ).map(cb => cb.value);
+
+    markers.forEach(marker => {
+      if (activeGroups.includes(marker.customerGroup)) {
+        marker.addTo(map);
+      } else {
+        map.removeLayer(marker);
+      }
+    });
+  }
+
+  function normalize(str) {
+    return str ? str.trim().toLowerCase().replace(/\s+/g, ' ') : '';
+  }
+  function filterData() {
+    const state = normalize(stateSearchInput.value);
+    const type = normalize(contacttypes.value);
+    const city = normalize(citySearchInput.value);
+    const insp = normalize(inspectionSelect.value);
+    const zipValue = normalize(zipSearchInput.value);
+    const serviceType = normalize(servicesSelect.value);
+    const vendorValue = normalize(vendorSelect.value);
+
+    // console.log({ state, city, type, insp, serviceType });
+
+    markers.forEach(marker => {
+      let show = true;
+
+      const markerState = normalize(marker.customer.state);
+      const markerType = normalize(marker.customer.type);
+      const markerCity = normalize(marker.customer.city);
+      const markerServiceType = normalize(marker.customer[KEYS.TYPE_SERVICE]);
+      const markerInsp = normalize(marker.customer[KEYS.INSPECTION_PLAN]);
+      const markerZip = normalize(marker.customer.postalCode ?? "");
+      const vendorName = normalize(marker.customer[KEYS.VENDOR_NAME] ?? "");
+      if (state && markerState !== state) show = false;
+      if (type && markerType !== type) show = false;
+      if (city && markerCity !== city) show = false;
+      if (serviceType && markerServiceType !== serviceType) show = false;
+      if (insp && markerInsp !== insp) show = false;
+      if (zipValue && markerZip !== zipValue) show = false;
+      if (vendorValue && vendorName !== vendorValue) show = false;
+      if (show) {
+        marker.addTo(map);
+      } else {
+        map.removeLayer(marker);
+      }
+    });
+
+    zoomToMarkers(true);
+
+    if (state && stateBounds[state]) {
+      zoomToState(state);
+    }
+  }
+</script>
+
+
+
+//// relevent code to get the more info ////
+
+ const KEYS = {
+    LAT: "Latitude",
+    LNG: "Longitude",
+    INSPECTION_PLAN: "Inspection Plan",
+    TYPE_SERVICE: "Type of Service",
+    VENDOR_NAME: "Vendor Name",
+    CONTACT_TYPE: "Contact Type"
+  }
+  
+  const configs = [
+    { id: "inspection", q: KEYS.INSPECTION_PLAN },
+    { id: "types", q: KEYS.CONTACT_TYPE },
+    { id: "services", q: KEYS.TYPE_SERVICE },
+    { id: "vendor_name", q: KEYS.VENDOR_NAME },
+    { id: "latitude", q: KEYS.LAT },
+    { id: "longitude", q: KEYS.LNG }
+  ];
+  
+  async function fetchCustomField(query = '', picklistOptions = true) {
+
+    let data = await makeAPICall(`locations/${locationId}/customFields/search?parentId=&skip=0&limit=10&documentType=field&model=all&query=${query}&includeStandards=true`);
+    const field = data?.customFields?.find(
+      f => f.name.trim().toLowerCase() === query.toLowerCase()
+    );
+    if (field) {
+
+      field.fieldId = field._id ?? field.id;
+      field.fieldKey = field.fieldKey.replaceAll("contact.", "");
+      return field;
+    }
+    
+      let allCustomFields = {};
+
+  async function getFields() {
+
+
+    const results = await Promise.all(
+      configs.map(async ({ id, q }) => {
+        const fields = await fetchCustomField(q);
+        return { id, fields, finder: q };
+      })
+    );
+    let locationFields = fields[locationId] ?? {};
+
+    for (const { id, fields, finder } of results) {
+      allCustomFields[id] = fields;
+      locationFields[finder] = fields.id || fields._id;
+
+      // document.querySelector('#' + id).setAttribute("data-fieldid", fields.fieldId);
+
+      
+    }
+    fields[locationId] = locationFields;
+    console.log(fields);
+  }
+
+    return { picklistOptions: [] };
+  }
+  
+   async function getContacts(baseFilter, page = 1, limit = 5000, retries = 1) {
+    console.log({ page });
+    if (!Array.isArray(baseFilter)) {
+      baseFilter = [baseFilter];
+    }
+    try {
+      let response = await makeAPICall("contacts/search/2", "POST", {
+        "locationId": locationId,
+        "page": page,
+        "pageLimit": limit,
+        "sort": [],
+        "filters": [
+          {
+            "group": "OR",
+            "filters": [
+              {
+                "group": "AND",
+                "filters": [
+                  {
+                    "id": "7",
+                    "filterName": "Full Name",
+                    "filterName_lc": "full_name",
+                    "extras": {},
+                    "selectedOption": {
+                      "filterName": "Full Name",
+                      "filterName_lc": "full_name",
+                      "condition": "is_not_empty",
+                      "firstValue": null
+                    }
+                  },
+                  {
+                    "id": "3",
+                    "filterName": "Address",
+                    "filterName_lc": "address",
+                    "extras": {},
+                    "selectedOption": {
+                      "filterName": "Address",
+                      "filterName_lc": "address",
+                      "condition": "is_not_empty"
+                    }
+                  },
+                  ...baseFilter
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      let isLimitError = checkLimitError(response);
+      if (isLimitError && retries == 1) {
+        maxContacts = isLimitError;
+        return await getContacts(baseFilter, page, maxContacts, 2);
+      }
+      return response.contacts ?? [];
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
+  }
+function getAddress(contact) {
+    return contact.address_1 || contact.address1 || contact.full_address || "";
+  }
+
+  function getCompany(contact) {
+    return contact.companyName || contact.businessName || contact.business_name || contact.company_name || "";
+  }
+  
+  function toTitleCase(str = "") {
+    return str ? str
+      .toLowerCase()
+      .replace(/\b\w/g, char => char.toUpperCase()) : "";
+  }
+  
+  
+  //Customer Data
+  
+   let insPlan = customer[KEYS.INSPECTION_PLAN] || "";
+      let type = toTitleCase(customer.type ?? "") ?? "";
+
+      let serviceType = customer[KEYS.TYPE_SERVICE];
+      let vendorName = customer[KEYS.VENDOR_NAME];
+      let companyName = toTitleCase(getCompany(customer));
+      let contactName = toTitleCase(customer.contactName ?? customer.name);
+
+      let markerHTML = `<strong>${contactName}</strong><br><br>
+          <b>Company Name:</b> ${companyName}<br>
+          <b>Type:</b> ${type}<br>
+          <b>Address:</b> ${address}<br>
+          <b>City:</b> ${toTitleCase(customer.city ?? "")}<br>
+          <b>State:</b> ${toTitleCase(customer.state ?? "")}<br>
+          <b>Postal Code:</b> ${customer.postalCode ?? ""}<br>
+          
+          <b>${KEYS.INSPECTION_PLAN}:</b> ${insPlan}<br>
+          <b>${KEYS.TYPE_SERVICE}:</b> ${serviceType}<br>
+          <b>${KEYS.VENDOR_NAME}:</b> ${vendorName}<br>
+          <b>Latitude:</b> ${lat}<br>
+          <b>Longitude:</b> ${lng}<br>
+          `;//<b>Last Note: ${customer.lastNote ?? ""}
+
+

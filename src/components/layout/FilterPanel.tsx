@@ -96,7 +96,7 @@ export function FilterPanel({
           <div className="flex flex-wrap items-center gap-3">
             <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-slate-600">
               <Layers className="h-4 w-4 text-indigo-600" />
-              Cluster markers
+              Merge Appointments
               <input
                 type="checkbox"
                 checked={cluster}

@@ -108,7 +108,7 @@ export function FilterPanel({
 
             <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-slate-600">
               <CalendarClock className="h-4 w-4 text-indigo-600" />
-              Show busy
+              Show busy appointments
               <input
                 type="checkbox"
                 checked={showBusy}

@@ -6,8 +6,7 @@ import { FilterPanel } from '@/components/layout/FilterPanel'
 import { LoadProgress } from '@/features/appointments/components/LoadProgress'
 import { MapLoadingOverlay } from './MapLoadingOverlay'
 import { MapEmptyState } from './MapEmptyState'
-import { useAppointments } from '@/features/appointments/hooks/useAppointments'
-import { useBusyEvents } from '@/features/appointments/hooks/useBusyEvents'
+import { useScheduleData } from '@/features/appointments/hooks/useScheduleData'
 import { useReps } from '@/features/users/hooks/useReps'
 import { useRepColors } from '@/features/users/hooks/useRepColors'
 import { useAppointmentFilters } from '@/features/filters/useAppointmentFilters'
@@ -23,8 +22,7 @@ import type { AppointmentCoords } from '@/features/appointments/types/appointmen
  */
 export function AppointmentMapPage() {
   const [refreshKey, setRefreshKey] = useState(0)
-  const appointments = useAppointments(refreshKey)
-  const busy = useBusyEvents(refreshKey)
+  const { appointments, busy } = useScheduleData(refreshKey)
   const { reps, status: repsStatus } = useReps()
   const colorOf = useRepColors()
   const { filters, setRepIds, setDate, setDateMode } = useAppointmentFilters()

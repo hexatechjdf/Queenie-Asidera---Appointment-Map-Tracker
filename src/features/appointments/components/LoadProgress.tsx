@@ -31,9 +31,7 @@ export function LoadProgress({
       )}
       {status === 'ready' && (
         <span>
-          {count > 0
-            ? `${count} upcoming appointment${count === 1 ? '' : 's'} · ${mapped} mapped`
-            : 'No upcoming appointments'}
+          {`${count} upcoming appointment${count === 1 ? '' : 's'} · ${mapped} mapped`}
         </span>
       )}
       {status === 'error' && (

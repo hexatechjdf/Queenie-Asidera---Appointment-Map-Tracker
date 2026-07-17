@@ -166,7 +166,14 @@ export function AppointmentMapPage() {
         onRefresh={handleRefresh}
         isRefreshing={appointments.status === 'loading'}
       />
-      <LoadProgress {...appointments} />
+      {/* Count reflects the active rep/date filter (same set the map shows); load
+          progress (reps loaded/total) still comes from the raw state. */}
+      <LoadProgress
+        status={appointments.status}
+        appointments={filtered}
+        loaded={appointments.loaded}
+        total={appointments.total}
+      />
       {viewAllRepId && (
         <RepAppointmentsModal
           repName={nameOf(viewAllRepId)}
